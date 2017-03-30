@@ -9,8 +9,7 @@ cassandra_nodes
 install_user=indigo
 install_version=dce
 
-
 [indigo-webservers]
-#ring-0
+ring-0
 ring-1
 

@@ -13,15 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Create Cassandra cluster
-# ========================
+
+- name: Ensure we get the latest Mosquitto MQTT broker
+  apt_repository: repo='ppa:mosquitto-dev/mosquitto-ppa'
+  become: yes
+  become_method: sudo
+
+- name: Install useful packages
+  apt: pkg={{ item }} state=installed install_recommends=no
+  with_items:
+    - mosquitto
+  become: yes
+  become_method: sudo
 
 
-- name: Install indigo webserver
-  hosts: indigo-webservers
-  remote_user: "{{ install_user }}"
-  vars:
-    https_mode: false
-  roles:
-    - indigo-web
-    - indigo-listener

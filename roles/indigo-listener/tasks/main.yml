@@ -1,0 +1,121 @@
+---
+# Copyright 2016 University of Liverpool
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#  http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+- name: Include debian task file
+  include: "debian.yml"
+  when: ansible_os_family | lower == 'debian'
+
+- name: Include redhat task file
+  include: "redhat.yml"
+  when: ansible_os_family | lower == 'redhat'
+
+
+- name: Start the MQTT broker
+  service: name=mosquitto state=started
+  become: yes
+  become_method: sudo
+
+- name: Create script cache directory
+  file: name='{{ install_dir }}/scripts_cache' state=directory
+
+- name: Get the latest Docker
+  command: curl -sSL -o '{{ temp_dir }}/install_docker.sh' https://get.docker.com/
+  become: yes
+  become_method: sudo
+  register: getdocker
+  args:
+    creates: '{{ temp_dir }}/install_docker.sh'
+
+- name: Futz around with Docker
+  command: chmod +x '{{ temp_dir }}/install_docker.sh'
+  become: yes
+  become_method: sudo
+  when: getdocker.changed
+
+- name: Install Docker
+  command: '{{ temp_dir }}/install_docker.sh'
+  become: yes
+  become_method: sudo
+  when: getdocker.changed
+
+- name: Add the user to the docker group
+  user: name={{ ansible_user_id }} groups=docker append=yes
+  become: yes
+  become_method: sudo
+
+- name: Start Docker service (redhat)
+  service: name=indigo-listener state=started
+  become: yes
+  become_method: sudo
+  when: ansible_os_family | lower == 'redhat'
+
+- name: Copy Dockerfile
+  copy: src=Dockerfile dest='{{ install_dir }}/Dockerfile'
+  register: dockerfile
+
+- name: Create Docker image
+  command: /usr/bin/docker build -t alloy_python '{{ install_dir }}'
+  become: yes
+  become_method: sudo
+  when: dockerfile.changed
+  environment:
+    TMPDIR: '{{ temp_dir }}'
+
+- name: Install requirements
+  pip: name={{ item }} virtualenv="{{ install_dir }}/listener"
+  with_items:
+    - docopt
+    - paho-mqtt
+    - python-magic
+    - gevent
+  environment:
+    TMPDIR: '{{ temp_dir }}'
+
+- name: Install indigo lib
+  shell: "{{ install_dir }}/listener/bin/python setup.py develop"
+  environment:
+    TMPDIR: '{{ temp_dir }}'
+  args:
+    chdir: "{{ install_dir }}/indigo"
+
+#- name: Copy listener init script (upstart/debian)
+#  template: src=indigo-listener.conf dest=/etc/init/indigo-listener.conf
+#  become: yes
+#  become_method: sudo
+#  when: ansible_os_family | lower == 'debian'
+
+- name: Copy listener init script (systemd/debian)
+  template: src=indigo-listener.service.debian.j2 dest=/etc/systemd/system/indigo-listener.service
+  become: yes
+  become_method: sudo
+  when: ansible_os_family | lower == 'debian'
+
+- name: Copy listener init script (systemd/redhat)
+  template: src=indigo-listener.service.redhat.j2 dest=/etc/systemd/system/indigo-listener.service
+  become: yes
+  become_method: sudo
+  when: ansible_os_family | lower == 'redhat'
+
+- name: Start the listener
+  service: name=indigo-listener state=restarted
+  become: yes
+  become_method: sudo
+
+- name: Restart the Indigo web service
+  service: name=indigo-web state=restarted
+  become: yes
+  become_method: sudo
+  when: indigo-web-installed is defined

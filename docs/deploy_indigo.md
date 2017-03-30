@@ -65,6 +65,10 @@ cassandra_nodes
 [all_cassandra_nodes:vars]
 install_user=indigo
 install_version=dce
+
+[indigo-webservers]
+ring-0
+ring-1
 ```
 
 
@@ -90,6 +94,11 @@ _./webservers.yml_ file, with the **_https_mode_** variable.
 
 - Install everything
 
-ansible-playbook databases.yml -i inventory/staging --ask-become-pass
+ansible-playbook full.yml -i inventory/staging --ask-become-pass
+
+- Only install Indigo without Cassandra
+
+ansible-playbook indigo.yml -i inventory/staging --ask-become-pass
+
 
 
