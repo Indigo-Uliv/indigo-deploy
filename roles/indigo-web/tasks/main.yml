@@ -1,0 +1,110 @@
+---
+# Copyright 2016 University of Liverpool
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#  http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+- name: Include debian task file
+  include: "debian.yml"
+  when: ansible_os_family | lower == 'debian'
+
+- name: Include redhat task file
+  include: "redhat.yml"
+  when: ansible_os_family | lower == 'redhat'
+
+
+- name: Install Global Python modules
+  pip:
+    name=pexpect
+  become: yes
+  become_method: sudo
+
+- name: Manually create the webapp virtualenv
+  command: virtualenv "{{ install_dir }}/web" creates="{{ install_dir }}/web"
+
+- name: Copy indigo web archive on the server
+  unarchive: src=indigo-web-1.1.tar.gz dest="{{ install_dir }}/src"
+
+- name: Create a link from indigo-web-1.1 to project
+  file: src="{{ install_dir }}/src/indigo-web-1.1" dest="{{ install_dir }}/web/project" state=link
+
+- name: Install requirements
+  pip:
+    requirements="{{ install_dir }}/web/project/requirements.txt"
+    virtualenv="{{ install_dir }}/web"
+
+- name: Install indigo lib into webapp
+  shell: "{{ install_dir }}/web/bin/python setup.py develop"
+  args:
+    chdir: "{{ install_dir }}/indigo"
+
+#- name: Copy init script (upstart)
+#  template: src=indigo-web.conf dest=/etc/init/indigo-web.conf
+#  become: yes
+#  become_method: sudo
+
+- name: Copy Indigo-web init script (systemd/debian)
+  template: src=indigo-web.service.debian.j2 dest=/etc/systemd/system/indigo-web.service
+  notify:
+    - reload systemctl
+  become: yes
+  become_method: sudo
+  when: ansible_os_family | lower == 'debian'
+
+- name: Copy Indigo-web init script (systemd/redhat)
+  template: src=indigo-web.service.redhat.j2 dest=/etc/systemd/system/indigo-web.service
+  notify:
+    - reload systemctl
+  become: yes
+  become_method: sudo
+  when: ansible_os_family | lower == 'redhat'
+
+- name: Create the cassandra database
+  command: "{{ install_dir }}/web/bin/indigo create -c settings"
+
+- name: Collect static
+  command: "{{ install_dir }}/web/bin/python {{ install_dir }}/web/project/manage.py collectstatic --noinput"
+
+- name: Initialise Django database
+  django_manage: command=syncdb app_path="{{ install_dir }}/web/project" virtual_env="{{ install_dir }}/web/"
+
+- name: Set up database
+  command: "{{ install_dir }}/web/bin/python {{ install_dir }}/web/bin/indigo create"
+
+- name: Create default users
+  script: init_user.expect "{{ install_dir }}" "{{ item.user_name }}" "{{ item.password }}" "{{ item.admin }}"
+  ignore_errors: yes
+  with_items:
+    - { user_name: indigo, password: Ind1go, admin: y }
+    - { user_name: guest, password: guest, admin: n }
+
+- name: Create default groups
+  command: "{{ install_dir }}/web/bin/python {{ install_dir }}/web/bin/indigo group-create {{ item.group }}"
+  with_items:
+    - { group: admins }
+    - { group: guest }
+
+- name: Add users to groups
+  command: "{{ install_dir }}/web/bin/python {{ install_dir }}/web/bin/indigo group-add-user {{ item.group }} {{ item.user }}"
+  with_items:
+    - { group: admins, user: indigo }
+    - { group: guest, user: guest }
+
+- name: Include nginx task file
+  include: "nginx.yml"
+
+- name: Start the Indigo web service
+  service: name=indigo-web state=started enabled=yes
+  register: indigo-web-installed
+  become: yes
+  become_method: sudo

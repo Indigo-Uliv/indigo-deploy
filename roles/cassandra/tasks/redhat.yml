@@ -1,0 +1,102 @@
+---
+# Copyright 2016 University of Liverpool
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#  http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+- name: Template seed list
+  template: src=seeds.j2 dest=/tmp/seed_list mode=0664
+
+- name: Load seed list
+  shell: cat /tmp/seed_list
+  register: seed_list
+
+- name: Set seeds fact
+  set_fact: seeds={{ seed_list.stdout }}
+
+- debug: var=seeds
+
+- name: Set default private IP to node_ip
+  set_fact: private_ip="{{ node_ip }}"
+  
+- debug: var=private_ip
+
+- name: Set cassandra_config_dir fact
+  set_fact: cassandra_config_dir=/etc/cassandra
+
+- name: Check for cassandra_config_dir existence
+  stat: path={{ cassandra_config_dir }}
+  register: cassandra_config_dir_state
+
+- name: Stop Cassandra DCE
+  shell: service cassandra stop
+  when: "{{ init_server | default(false) }} == false and cassandra_config_dir_state.stat.exists == true"
+  
+- name: Check Cassandra system.log existence
+  stat: path=/var/log/cassandra/system.log
+  register: system_log_file
+
+- name: Clear Cassandra system.log
+  when: system_log_file.stat.exists == True
+  shell: echo > /var/log/cassandra/system.log
+
+- name: Install Datastax Community Cassandra & tools (redhat)
+  yum: name={{item}} state=present
+  register: cassandra_installed_dce
+  with_items:
+  - dsc30-{{ dsc_version }}
+  - cassandra30-tools-{{ cassandra_tools_version }}
+  when: install_version == "dce"
+
+- name: get cassandra_installed variable
+  set_fact: cassandra_installed="{{ cassandra_installed_dce.changed }}"
+ 
+- name: Create Hints folder if needed
+  file: path=/var/lib/cassandra/hints
+
+- name: Wait for server autostart
+  when: "{{ init_server | default(false) }} == true and {{ cassandra_installed }} == true"
+  wait_for: path=/var/log/cassandra/system.log search_regex="Starting listening for CQL clients"
+
+- name: Stop Cassandra DCE (autostarted on install)
+  shell: service cassandra stop
+  when: "{{ init_server | default(false) }} == true and install_version == 'dce'"
+
+- name: Clear Cassandra logs (after autostart)
+  when: "{{ init_server | default(false) }} == true"
+  shell: echo > /var/log/cassandra/system.log
+
+- name: Remove cluster metadata
+  shell: rm -rf /var/lib/cassandra/*
+  when: "{{ init_server | default(false) }} == true"
+
+- name: Backup original cassandra.yaml
+  command: "cp {{ cassandra_config_dir }}/default.conf/cassandra.yaml {{ cassandra_config_dir }}/cassandra.yaml.{{ cassandra_version }}.orig creates={{ cassandra_config_dir }}/cassandra.yaml.{{ cassandra_version }}.orig"
+
+- name: Template cassandra.yml
+  template: "src=cassandra.yaml.{{ cassandra_version }}.j2 dest={{ cassandra_config_dir }}/conf/cassandra.yaml mode=0664"
+
+- name: Enable performance tweaks
+  script: performance_tweaks.sh
+
+- name: Cassandra DCE startup
+  shell: service cassandra restart
+
+- name: Wait for Cassandra startup (bootstrapping)
+  wait_for: path=/var/log/cassandra/system.log search_regex="Starting listening for CQL clients" timeout=900
+  when: "{{ init_server | default(false) }} == false"
+
+- name: Wait for Cassandra startup (not bootstrapping)
+  pause: seconds=90
+  when: "{{ init_server | default(false) }} == true"
+  

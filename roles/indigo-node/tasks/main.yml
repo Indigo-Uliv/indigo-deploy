@@ -1,0 +1,30 @@
+---
+
+##############################################################################
+# System initialisation
+# Install all of the required packages
+##############################################################################
+
+
+- name: Include debian task file
+  include: "debian.yml"
+  when: ansible_os_family | lower == 'debian'
+
+- name: Include redhat task file
+  include: "redhat.yml"
+  when: ansible_os_family | lower == 'redhat'
+
+- name: Create log file directory
+  file: path="{{ install_dir }}/log/" state=directory
+
+- name: Ensures {{ install_dir }}/src dir exists
+  file: path="{{ install_dir }}/src" state=directory
+
+- name: Copy indigo archive on the server
+  unarchive: src=indigo-1.1.tar.gz dest="{{ install_dir }}/src"
+
+- name: Create a link from indigo-1.1 to indigo
+  file: src="{{ install_dir }}/src/indigo-1.1" dest="{{ install_dir }}/indigo" state=link
+  
+- name: Copy settings
+  template: src=settings.py dest="{{ install_dir }}/indigo"

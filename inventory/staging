@@ -1,0 +1,16 @@
+[cassandra_nodes]
+ring-0 node_ip=192.168.56.110 seed=true
+ring-1 node_ip=192.168.56.111 seed=true
+
+[all_cassandra_nodes:children]
+cassandra_nodes
+
+[all_cassandra_nodes:vars]
+install_user=indigo
+install_version=dce
+
+
+[indigo-webservers]
+#ring-0
+ring-1
+

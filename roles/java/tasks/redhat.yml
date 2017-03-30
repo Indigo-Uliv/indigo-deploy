@@ -1,0 +1,75 @@
+---
+# Copyright 2016 University of Liverpool
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#  http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Download RPM package if it's not there anymore
+#- name: download Java RPM
+#  shell:
+#    "curl -L  -H 'Cookie:oraclelicense=accept-securebackup-cookie' -o {{ oracle_java_dir_source }}/{{ oracle_java_rpm_filename }} {{ oracle_java_rpm_url }}"
+#  args:
+#    creates: "{{ oracle_java_dir_source }}/{{ oracle_java_rpm_filename }}"
+#  register: oracle_java_task_rpm_download
+
+#- debug: var=oracle_java_task_rpm_download
+
+- copy:
+    src: jdk-8u121-linux-x64.rpm
+    dest: "{{ oracle_java_dir_source }}/{{ oracle_java_rpm_filename }}"
+    force: no
+  register: oracle_java_task_rpm_download
+
+
+# Install RPM package if the file was downloaded
+- name: install RPM
+  action: "{{ ansible_pkg_mgr }} name={{ oracle_java_dir_source }}/{{ oracle_java_rpm_filename }} state=present"
+#  when: not oracle_java_task_rpm_download|skipped
+
+# Creates the java links if the rpm has been downloaded or if the installed
+# java version is different of the expected version
+- name: set Java version as default
+  alternatives:
+    name="{{ item.exe }}"
+    link="/usr/bin/{{ item.exe }}"
+    path="{{ item.path }}/{{ item.exe }}"
+  with_items:
+    - { path: "{{ oracle_java_home }}/jre/bin", exe: 'java' }
+    - { path: "{{ oracle_java_home }}/jre/bin", exe: 'keytool' }
+    - { path: "{{ oracle_java_home }}/bin", exe: 'javac' }
+    - { path: "{{ oracle_java_home }}/bin", exe: 'javadoc' }
+#  when: (
+#          oracle_java_task_rpm_download is defined and
+#          oracle_java_task_rpm_download|changed
+#        ) or (
+#          oracle_java_installed is defined and
+#          oracle_java_installed and
+#          oracle_java_version_installed is defined and
+#          oracle_java_version_installed != oracle_java_version_string)
+  register: oracle_java_task_set_default
+
+- name: in case there were changes, check host environment again
+  include: check_environment.yml
+  when: (
+          oracle_java_task_rpm_download is defined and
+          not oracle_java_task_rpm_download|skipped
+        ) or (
+          oracle_java_task_set_default is defined and
+          oracle_java_task_set_default|changed
+        )
+
+
+- name: Install system dependencies 
+  yum: name={{ item }} state=installed
+  with_items:
+    - jna
+

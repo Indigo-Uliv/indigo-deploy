@@ -1,0 +1,110 @@
+---
+# Copyright 2016 University of Liverpool
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#  http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+- name: Create /etc/nginx/sites-available
+  file: path=/etc/nginx/sites-available state=directory
+  become: yes
+  become_method: sudo
+
+
+- name: Create /etc/nginx/sites-enabled
+  file: path=/etc/nginx/sites-enabled state=directory
+  become: yes
+  become_method: sudo
+
+- name: Template nginx.conf
+  template: "src=nginx_redhat.j2 dest=/etc/nginx/nginx.conf"
+  become: yes
+  become_method: sudo
+
+
+- name: Create HTTP nginx config
+  template: src=indigo-web.nginx dest=/etc/nginx/sites-available/indigo_http
+  become: yes
+  become_method: sudo
+
+- name: Create HTTPS nginx config
+  template: src=indigo-web-ssl.nginx dest=/etc/nginx/sites-available/indigo_https
+  become: yes
+  become_method: sudo
+
+- name: Create SSL directory for nginx
+  file: path=/etc/nginx/ssl state=directory
+  become: yes
+  become_method: sudo
+
+- name: Retrieves facts for SSL certificate
+  stat: path=/etc/nginx/ssl/nginx.crt
+  register: ssl_certificate
+  become: yes
+  become_method: sudo
+
+- name: Retrieves facts for SSL key
+  stat: path=/etc/nginx/ssl/nginx.key
+  register: ssl_key
+  become: yes
+  become_method: sudo
+
+- name: Self-sign SSL Certificate when not present
+  expect:
+    command: openssl req -new -x509 -sha256 -newkey rsa:2048 -days 365 -nodes -out nginx.crt -keyout nginx.key
+    chdir: /etc/nginx/ssl
+    responses:
+      Country Name (.*): "UK"
+      State (.*): "Merseyside"
+      Locality (.*): "Liverpool"
+      Organization Name (.*): "Pericles"
+      Organizational Unit Name(.*): ""
+      Common Name (.*): "Pericles"
+      Email (.*): ""
+  when: (ssl_certificate.stat.exists == False) or
+        (ssl_key.stat.exists == False)
+  become: yes
+  become_method: sudo
+
+- name: Delete default nginx config for enabled site
+  file: path=/etc/nginx/sites-enabled/default state=absent
+  become: yes
+  become_method: sudo
+
+- name: Delete nginx config for https mode when http mode
+  file: path=/etc/nginx/sites-enabled/indigo_https state=absent
+  when: not https_mode
+  become: yes
+  become_method: sudo
+
+- name: Delete nginx config for http mode when https mode
+  file: path=/etc/nginx/sites-enabled/indigo_http state=absent
+  when: https_mode
+  become: yes
+  become_method: sudo
+
+- name: Copy nginx config for https mode
+  file: src=/etc/nginx/sites-available/indigo_https dest=/etc/nginx/sites-enabled/indigo_https state=link
+  when: https_mode
+  become: yes
+  become_method: sudo
+
+- name: Copy nginx config for http mode
+  file: src=/etc/nginx/sites-available/indigo_http dest=/etc/nginx/sites-enabled/indigo_http state=link
+  when: not https_mode
+  become: yes
+  become_method: sudo
+
+- name: Start nginx
+  service: name=nginx state=restarted
+  become: yes
+  become_method: sudo
