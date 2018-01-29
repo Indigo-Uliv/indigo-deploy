@@ -1,3 +1,4 @@
+---
 # Copyright 2016 University of Liverpool
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,12 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-# Misc
-install_user: indigo
-
-
-# Indigo
-install_dir: /home/indigo
-temp_dir: /tmp
-production: false
+# Datastax Email and password
+# Depending on your environment, you might need to replace @ in your email 
+# address with %40 and escape any character in your password that is used in
+# your operating system's command line. Examples: \! and \|
+dsa_email_address: ''
+dsa_password: ''

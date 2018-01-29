@@ -7,7 +7,7 @@ set user_name [lindex $argv 1]
 set password [lindex $argv 2]
 
 set env(CQLENG_ALLOW_SCHEMA_MANAGEMENT) 1
-spawn $install_dir/web/bin/python $install_dir/web/bin/indigo user-create $user_name
+spawn $install_dir/web/bin/python $install_dir/web/bin/iadmin mkuser $user_name
 
 expect -re ".*administrator.*"
 send "y\r"

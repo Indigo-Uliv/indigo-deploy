@@ -17,10 +17,11 @@
 - name: Add repository for Datastax Community Edition (DCE)
   yum_repository:
     name: DataStax
-    description: DataStax Repo for Apache Cassandra
-    baseurl: http://rpm.datastax.com/community
+    description: DataStax Repo for DataStax Enterprise
+    baseurl: https://{{dsa_email_address}}:{{dsa_password}}@rpm.datastax.com/enterprise
     enabled: yes
     gpgcheck: no
+    
 
 - name: Install system dependencies
   yum: name={{ item }} state=installed

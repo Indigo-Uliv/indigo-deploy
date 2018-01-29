@@ -36,7 +36,7 @@ BOOTPROTO=static
 ONBOOT=yes
 IPADDR=192.168.56.111
 NETMASK=255.255.255.0
-BROADCAST 192.168.56.255
+BROADCAST=192.168.56.255
 ```
 
 > $ sudo ifdown enp0s8
@@ -50,8 +50,8 @@ using SSH keys.
 
 Add your public ssh key in ~/.ssh/authorized_keys
 
-> $ mkdir ~/.ssh  
-> $ chmod 700 ~/.ssh  
+> $ mkdir ~/.ssh
+> $ chmod 700 ~/.ssh
 > $ nano ~/.ssh/authorized_keys
 > $ chmod 600 ~/.ssh/authorized_keys
 
@@ -61,8 +61,8 @@ Add your public ssh key in ~/.ssh/authorized_keys
 
 > $ sudo yum install -y python27
 > $ sudo yum install -y python2-dnf
-> $ sudo yum install libselinux-python
-> $ sudo dnf install yum
+> $ sudo yum install -y libselinux-python
+> $ sudo dnf install -y yum
 
 
 ### Download Oracle Java RPM (Temporary workaround)
@@ -73,6 +73,6 @@ and put it in _indigo-deploy/roles/java/files_
 
 ### Disable Firewall 
 
-setenforce 0
-service firewalld stop
+> $ sudo setenforce 0
+> $ sudo service firewalld stop
 

@@ -1,0 +1,8 @@
+[cassandra_nodes]
+indigo-12 node_ip=192.168.56.112 seed=true
+
+[all_cassandra_nodes:children]
+cassandra_nodes
+
+[indigo-webservers]
+indigo-12

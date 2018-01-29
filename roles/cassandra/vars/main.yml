@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-dsc_version: 3.0.9-1
-cassandra_version: 3.0.9
-cassandra_tools_version: 3.0.9
+
+dse_version: 5.0.7-1
+
+cluster_name: indigo_cluster
+num_tokens: 128

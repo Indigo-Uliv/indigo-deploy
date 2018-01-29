@@ -5,7 +5,7 @@
 
 Indigo expects a user named indigo with sudo access
 
-> $ sudo adduser indigo  
+> $ sudo adduser indigo
 > $ sudo adduser indigo sudo
 
 
@@ -49,8 +49,8 @@ using SSH keys.
 
 Add your public ssh key in ~/.ssh/authorized_keys
 
-> $ mkdir ~/.ssh  
-> $ chmod 700 ~/.ssh  
+> $ mkdir ~/.ssh
+> $ chmod 700 ~/.ssh
 > $ nano ~/.ssh/authorized_keys
 > $ chmod 600 ~/.ssh/authorized_keys
 

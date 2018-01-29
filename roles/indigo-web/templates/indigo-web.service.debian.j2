@@ -1,7 +1,7 @@
 [Unit]
 Description=Indigo-web job
-Requires=cassandra.service
-After=cassandra.service
+Requires=dse.service
+After=dse.service
 
 [Service]
 Environment="CQLENG_ALLOW_SCHEMA_MANAGEMENT=1"

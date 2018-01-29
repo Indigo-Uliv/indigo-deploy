@@ -13,11 +13,4 @@
 # limitations under the License.
 
 
-# Misc
-install_user: indigo
-
-
-# Indigo
-install_dir: /home/indigo
-temp_dir: /tmp
-production: false
+indigo_version: 1.2

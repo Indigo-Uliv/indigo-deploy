@@ -32,14 +32,14 @@
 - debug: var=private_ip
 
 - name: Set cassandra_config_dir fact
-  set_fact: cassandra_config_dir=/etc/cassandra
+  set_fact: cassandra_config_dir=/etc/dse/cassandra
 
 - name: Check for cassandra_config_dir existence
   stat: path={{ cassandra_config_dir }}
   register: cassandra_config_dir_state
 
-- name: Stop Cassandra DCE
-  shell: service cassandra stop
+- name: Stop Cassandra DSE
+  shell: service dse stop
   when: "{{ init_server | default(false) }} == false and cassandra_config_dir_state.stat.exists == true"
   
 - name: Check Cassandra system.log existence
@@ -50,26 +50,21 @@
   when: system_log_file.stat.exists == True
   shell: echo > /var/log/cassandra/system.log
 
-- name: Install Datastax Community Cassandra & tools (redhat)
+- name: Install DSE & tools (redhat)
   yum: name={{item}} state=present
   register: cassandra_installed_dce
   with_items:
-  - dsc30-{{ dsc_version }}
-  - cassandra30-tools-{{ cassandra_tools_version }}
-  when: install_version == "dce"
+  - dse-full-{{ dse_version }}
 
 - name: get cassandra_installed variable
   set_fact: cassandra_installed="{{ cassandra_installed_dce.changed }}"
- 
-- name: Create Hints folder if needed
-  file: path=/var/lib/cassandra/hints
 
 - name: Wait for server autostart
   when: "{{ init_server | default(false) }} == true and {{ cassandra_installed }} == true"
   wait_for: path=/var/log/cassandra/system.log search_regex="Starting listening for CQL clients"
 
-- name: Stop Cassandra DCE (autostarted on install)
-  shell: service cassandra stop
+- name: Stop Cassandra DSE (autostarted on install)
+  shell: service dse stop
   when: "{{ init_server | default(false) }} == true and install_version == 'dce'"
 
 - name: Clear Cassandra logs (after autostart)
@@ -80,17 +75,33 @@
   shell: rm -rf /var/lib/cassandra/*
   when: "{{ init_server | default(false) }} == true"
 
-- name: Backup original cassandra.yaml
-  command: "cp {{ cassandra_config_dir }}/default.conf/cassandra.yaml {{ cassandra_config_dir }}/cassandra.yaml.{{ cassandra_version }}.orig creates={{ cassandra_config_dir }}/cassandra.yaml.{{ cassandra_version }}.orig"
+- name: Check backup cassandra.yaml
+  stat: path={{ cassandra_config_dir }}/cassandra.yaml.{{ dse_version }}.orig
+  register: cassandra_yaml_backup
 
+- name: Backup original cassandra.yaml
+  command: "cp {{ cassandra_config_dir }}/cassandra.yaml {{ cassandra_config_dir }}/cassandra.yaml.{{ dse_version }}.orig"
+  when: cassandra_yaml_backup.stat.exists == False
+
+- name: Check backup default dse config
+  stat: path=/etc/default/dse.{{ dse_version }}.orig
+  register: dse_config_backup
+
+- name: Backup original default dse config
+  command: "cp /etc/default/dse /etc/default/dse.{{ dse_version }}.orig"
+  when: dse_config_backup.stat.exists == False
+  
 - name: Template cassandra.yml
-  template: "src=cassandra.yaml.{{ cassandra_version }}.j2 dest={{ cassandra_config_dir }}/conf/cassandra.yaml mode=0664"
+  template: "src=cassandra.yaml.{{ dse_version }}.j2 dest={{ cassandra_config_dir }}/cassandra.yaml mode=0664"
+  
+- name: Template dse config
+  template: "src=dse.{{ dse_version }}.j2 dest=/etc/default/dse mode=0664"
 
 - name: Enable performance tweaks
   script: performance_tweaks.sh
 
-- name: Cassandra DCE startup
-  shell: service cassandra restart
+- name: Cassandra DSE startup
+  shell: service dse restart
 
 - name: Wait for Cassandra startup (bootstrapping)
   wait_for: path=/var/log/cassandra/system.log search_regex="Starting listening for CQL clients" timeout=900

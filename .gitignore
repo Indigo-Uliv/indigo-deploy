@@ -67,3 +67,8 @@ jdk-8u121-linux-x64.rpm
 
 # Ansible
 *.retry
+
+# May contain Datastax password, do not commit
+roles/cassandra_common/vars/main.yml
+
+

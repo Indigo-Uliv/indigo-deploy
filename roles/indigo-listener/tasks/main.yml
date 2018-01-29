@@ -22,7 +22,6 @@
   include: "redhat.yml"
   when: ansible_os_family | lower == 'redhat'
 
-
 - name: Start the MQTT broker
   service: name=mosquitto state=started
   become: yes
@@ -57,7 +56,7 @@
   become_method: sudo
 
 - name: Start Docker service (redhat)
-  service: name=indigo-listener state=started
+  service: name=docker.service state=started
   become: yes
   become_method: sudo
   when: ansible_os_family | lower == 'redhat'

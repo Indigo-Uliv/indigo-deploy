@@ -1,0 +1,11 @@
+[bastion]
+uxa.liv.ac.uk
+
+[cassandra_nodes]
+138.253.100.51 node_ip=138.253.100.51 seed=true
+
+[all_cassandra_nodes:children]
+cassandra_nodes
+
+[indigo-webservers]
+138.253.100.51

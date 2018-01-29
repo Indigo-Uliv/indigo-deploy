@@ -21,10 +21,10 @@
   file: path="{{ install_dir }}/src" state=directory
 
 - name: Copy indigo archive on the server
-  unarchive: src=indigo-1.1.tar.gz dest="{{ install_dir }}/src"
+  unarchive: src=indigo-{{ indigo_version }}.tar.gz dest="{{ install_dir }}/src"
 
-- name: Create a link from indigo-1.1 to indigo
-  file: src="{{ install_dir }}/src/indigo-1.1" dest="{{ install_dir }}/indigo" state=link
+- name: Create a link from indigo-{{ indigo_version }} to indigo
+  file: src="{{ install_dir }}/src/indigo-{{ indigo_version }}" dest="{{ install_dir }}/indigo" state=link
   
 - name: Copy settings
   template: src=settings.py dest="{{ install_dir }}/indigo"
