@@ -16,10 +16,11 @@
 
 - name: Check environment
   include: check_environment.yml
-
-- name: Include debian task file
-  include: "debian.yml"
-  when: ansible_os_family | lower == 'debian'
+  
+# PPA for Java do not exist anymore
+#- name: Include debian task file
+#  include: "debian.yml"
+#  when: ansible_os_family | lower == 'debian'
 
 - name: Include redhat task file
   include: "redhat.yml"
