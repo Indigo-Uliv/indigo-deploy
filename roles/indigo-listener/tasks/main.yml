@@ -118,4 +118,4 @@
   service: name=indigo-web state=restarted
   become: yes
   become_method: sudo
-  when: indigo-web-installed is defined
+  when: indigo_web_installed is defined

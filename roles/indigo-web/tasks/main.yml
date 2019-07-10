@@ -105,6 +105,8 @@
 
 - name: Start the Indigo web service
   service: name=indigo-web state=started enabled=yes
-  register: indigo-web-installed
+  register: indigo_web_installed
   become: yes
   become_method: sudo
+  
+  
