@@ -67,3 +67,7 @@ jdk-8u121-linux-x64.rpm
 
 # Ansible
 *.retry
+
+inventory/staging_local
+
+
